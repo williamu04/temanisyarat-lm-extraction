@@ -9,8 +9,8 @@ SIGNER=(signer1 signer2 signer3 siger4 signer5 signer6 signer7 signer8)
 
 for s in "${SIGNER[@]}"; do
     INPUT_DIR="./augmented/$s"
-    OUTPUT_NPZ_DIR="./extracted/$s"
-    OUTPUT_VIDEO_DIR="./extracted_videos/$s"
+    OUTPUT_NPZ_DIR="./data/$s"
+    OUTPUT_VIDEO_DIR="./landmarked/$s"
 
     mkdir -p "$OUTPUT_NPZ_DIR"
     mkdir -p "$OUTPUT_VIDEO_DIR"
