@@ -2,7 +2,7 @@
 
 shopt -s nullglob
 # Modify based on signer folders
-SIGNER=(signer1 signer2 signer3 siger4 signer5 signer6 signer7 signer8)
+SIGNER=(willi farras ivan ian hani mutia fredi saidah)
 
 for S in "${SIGNER[@]}"; do
     INPUT_DIR="./videoset/$S"
@@ -72,12 +72,12 @@ for S in "${SIGNER[@]}"; do
             # 8. Hflip + shift left
             ffmpeg -y -i "$VIDEO" \
                 -vf "hflip,crop=iw*0.9:ih:iw*0.9:0,scale='2*round(iw*1.11/2)':ih" \
-                "$OUTPUT_DIR/$LABEL/${BASENAME}_shift_left.mp4"
+                "$OUTPUT_DIR/$LABEL/${BASENAME}_hflip_shift_left.mp4"
             
             # 9. Hflip + shift right
             ffmpeg -y -i "$VIDEO" \
                 -vf "hflip,crop=iw*0.9:ih:0:0,scale='2*round(iw*1.11/2)':ih" \
-                "$OUTPUT_DIR/$LABEL/${BASENAME}_shift_right.mp4"
+                "$OUTPUT_DIR/$LABEL/${BASENAME}_hflip_shift_right.mp4"
         done
     done
 done

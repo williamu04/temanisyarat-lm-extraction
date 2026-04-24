@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT_DIR"
 
 # Modify based on signer folders
-SIGNER=(signer1 signer2 signer3 siger4 signer5 signer6 signer7 signer8)
+SIGNER=(willi farras ivan ian hani mutia fredi saidah)
 
 for s in "${SIGNER[@]}"; do
     INPUT_DIR="./augmented/$s"
@@ -21,13 +21,9 @@ for s in "${SIGNER[@]}"; do
         mkdir -p "$OUTPUT_NPZ_DIR/$LABEL"
         mkdir -p "$OUTPUT_VIDEO_DIR/$LABEL"
 
-        for VIDEO in "$LABEL_PATH"*.mp4; do
-            BASENAME=$(basename "$VIDEO" .mp4)
+        echo "Processing videos in $LABEL_PATH..."
 
-            echo "Processing $VIDEO..."
-
-            python main.py batch "$VIDEO" --out-npy-dir "$OUTPUT_NPZ_DIR/$LABEL/${BASENAME}" --out-video-dir "$OUTPUT_VIDEO_DIR/$LABEL/${BASENAME}"
-        done
+        python main.py batch "$LABEL_PATH" --out-npy-dir "$OUTPUT_NPZ_DIR/$LABEL" --out-video-dir "$OUTPUT_VIDEO_DIR/$LABEL"
     done
 done
 

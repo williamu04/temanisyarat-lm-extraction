@@ -1,4 +1,6 @@
-.PHONY: all venv augment extract clean
+.PHONY: all venv augment extract
+
+VENV_DIR = .venv
 
 all: venv augment extract
 
@@ -12,6 +14,3 @@ augment: venv
 
 extract: augment
 	./extract.sh
-
-clean:
-	rm -rf $(VENV_DIR) $(VIDEO_OUT) $(NPY_OUT)
