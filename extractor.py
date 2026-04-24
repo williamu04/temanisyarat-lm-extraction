@@ -92,9 +92,9 @@ class ExtractorConfig:
 
     # Face
     num_faces: int = 1
-    face_detection_conf: float = 0.1
-    face_presence_conf: float  = 0.1 
-    face_tracking_conf: float  = 0.1
+    face_detection_conf: float = 0.5
+    face_presence_conf: float  = 0.5 
+    face_tracking_conf: float  = 0.5
 
     # Hand
     num_hands: int = 2
