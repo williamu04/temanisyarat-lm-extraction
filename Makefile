@@ -13,4 +13,4 @@ augment: venv
 	./augmentation.sh
 
 extract: augment
-	./extract.sh
+	./extract.sh $(VENV_DIR)
