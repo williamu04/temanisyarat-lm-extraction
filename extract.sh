@@ -25,7 +25,7 @@ for s in "${SIGNER[@]}"; do
 
     echo "Processing videos in $LABEL_PATH..."
 
-    "$venv" /bin/python main.py batch "$LABEL_PATH" --out-npy-dir "$OUTPUT_NPZ_DIR/$LABEL" --out-video-dir "$OUTPUT_VIDEO_DIR/$LABEL"
+    "$venv"/bin/python main.py batch "$LABEL_PATH" --out-npy-dir "$OUTPUT_NPZ_DIR/$LABEL" --out-video-dir "$OUTPUT_VIDEO_DIR/$LABEL"
   done
 done
 

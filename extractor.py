@@ -1,10 +1,9 @@
 """
 extractor.py
 =====================
-Reusable MediaPipe landmark extractor (Pose + Face + Hand).
+Reusable MediaPipe landmark extractor (Pose + Hand).
 Hanya menyimpan & menggambar subset landmark yang relevan:
   - Pose : 9 titik upper-body  (POSE_UPPER_IDX)
-  - Face : 46 titik kunci      (FACE_KEY_IDX)
   - Hand : 21 titik + skeleton (HAND_CONNECTIONS)
 
 Usage (single video):
@@ -12,7 +11,6 @@ Usage (single video):
     ext = LandmarkExtractor()
     result = ext.process_video("input.mp4", out_video_path="output.mp4")
     # result.pose  : [T, 9,  4]
-    # result.face  : [T, 46, 3]
     # result.hands : [T, 2, 21, 3]
 
 Usage (batch):
@@ -45,20 +43,6 @@ VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".webm", ".flv", ".wmv"}
 # Upper-body pose landmarks (dari 33 total)
 POSE_UPPER_IDX = [0, 11, 12, 13, 14, 15, 16, 23, 24]
 
-# Key facial landmarks (dari 478 total)
-FACE_KEY_IDX = [
-    # bibir
-    61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291,
-    # mata kiri
-    33, 160, 158, 133, 153, 144,
-    # mata kanan
-    362, 385, 387, 263, 373, 380,
-    # alis kiri
-    70, 63, 105, 66, 107,
-    # alis kanan
-    336, 296, 334, 293, 300,
-]
-
 # Hand skeleton connections (semua 21 landmark dipakai, koneksi digambar)
 HAND_CONNECTIONS = [
     (0, 1),  (1, 2),  (2, 3),   (3, 4),    # ibu jari
@@ -71,7 +55,6 @@ HAND_CONNECTIONS = [
 
 # Full landmark counts (MediaPipe spec)
 N_POSE_FULL = 33
-N_FACE_FULL = 478
 N_HAND      = 21
 
 
@@ -81,7 +64,6 @@ N_HAND      = 21
 @dataclass
 class ExtractorConfig:
     pose_model_path: str = "tasks/pose_landmarker_heavy.task"
-    face_model_path: str = "tasks/face_landmarker.task"
     hand_model_path: str = "tasks/hand_landmarker.task"
 
     # Pose
@@ -89,12 +71,6 @@ class ExtractorConfig:
     pose_detection_conf: float = 0.5
     pose_presence_conf: float  = 0.5
     pose_tracking_conf: float  = 0.5
-
-    # Face
-    num_faces: int = 1
-    face_detection_conf: float = 0.5
-    face_presence_conf: float  = 0.5 
-    face_tracking_conf: float  = 0.5
 
     # Hand
     num_hands: int = 2
@@ -104,15 +80,12 @@ class ExtractorConfig:
 
     # Drawing toggles
     draw_pose:  bool = True
-    draw_face:  bool = True
     draw_hands: bool = True
 
     # Drawing style
     pose_color: tuple[int, int, int] = (0, 255, 0)   # BGR green
-    face_color: tuple[int, int, int] = (255, 0, 0)   # BGR blue
     hand_color: tuple[int, int, int] = (0, 0, 255)   # BGR red
     pose_radius: int = 4
-    face_radius: int = 2
     hand_radius: int = 3
     hand_line_thickness: int = 1
 
@@ -126,14 +99,12 @@ class ExtractorConfig:
 class ExtractionResult:
     """
     pose  : [T, len(POSE_UPPER_IDX), 4]   (x, y, z, visibility)
-    face  : [T, len(FACE_KEY_IDX),   3]   (x, y, z)
     hands : [T, 2, N_HAND,           3]   (hand_idx, landmark, xyz)
     """
     video_path:   str
     total_frames: int
     fps:          float
     pose:  np.ndarray = field(default_factory=lambda: np.array([]))
-    face:  np.ndarray = field(default_factory=lambda: np.array([]))
     hands: np.ndarray = field(default_factory=lambda: np.array([]))
 
 
@@ -192,23 +163,6 @@ def _draw_pose_subset(
             cv2.circle(frame, (x, y), radius, color, -1)
 
 
-def _draw_face_subset(
-    frame: np.ndarray,
-    lm_list: list,
-    indices: list[int],
-    color: tuple[int, int, int],
-    radius: int,
-) -> None:
-    """Gambar titik-titik face key points saja."""
-    h, w = frame.shape[:2]
-    for idx in indices:
-        if idx >= len(lm_list):
-            continue
-        x, y = _px(lm_list[idx], w, h)
-        if _valid(x, y, w, h):
-            cv2.circle(frame, (x, y), radius, color, -1)
-
-
 def _draw_hand_skeleton(
     frame: np.ndarray,
     lm_list: list,
@@ -240,10 +194,9 @@ def _draw_hand_skeleton(
 
 class LandmarkExtractor:
     """
-    MediaPipe Tasks extractor (Pose / Face / Hand) — VIDEO mode.
+    MediaPipe Tasks extractor (Pose + Hand) — VIDEO mode.
 
     Pose  → simpan & gambar hanya POSE_UPPER_IDX  (9 titik)
-    Face  → simpan & gambar hanya FACE_KEY_IDX    (46 titik)
     Hand  → simpan semua 21 titik, gambar dengan HAND_CONNECTIONS
     """
 
@@ -268,7 +221,7 @@ class LandmarkExtractor:
         ----------
         video_path     : Path video input.
         out_video_path : Jika diisi, tulis video teranotasi ke sini.
-        out_npy_path   : Jika diisi, simpan .npz (pose, face, hands).
+        out_npy_path   : Jika diisi, simpan .npz (pose, hands).
         """
         video_path = Path(video_path)
         logger.info("Processing: %s", video_path)
@@ -287,9 +240,8 @@ class LandmarkExtractor:
             fourcc = cv2.VideoWriter.fourcc(*self.cfg.fourcc)
             writer = cv2.VideoWriter(str(out_video_path), fourcc, fps, (width, height))
 
-        pose_seq, face_seq, hand_seq = [], [], []
+        pose_seq, hand_seq = [], []
         n_pose_out = len(POSE_UPPER_IDX)
-        n_face_out = len(FACE_KEY_IDX)
 
         BaseOpts = mp.tasks.BaseOptions
         RunMode  = mp.tasks.vision.RunningMode
@@ -301,16 +253,6 @@ class LandmarkExtractor:
             min_pose_detection_confidence=self.cfg.pose_detection_conf,
             min_pose_presence_confidence=self.cfg.pose_presence_conf,
             min_tracking_confidence=self.cfg.pose_tracking_conf,
-        )
-        face_opts = mp.tasks.vision.FaceLandmarkerOptions(
-            base_options=BaseOpts(model_asset_path=self.cfg.face_model_path),
-            running_mode=RunMode.VIDEO,
-            num_faces=self.cfg.num_faces,
-            min_face_detection_confidence=self.cfg.face_detection_conf,
-            min_face_presence_confidence=self.cfg.face_presence_conf,
-            min_tracking_confidence=self.cfg.face_tracking_conf,
-            output_face_blendshapes=False,
-            output_facial_transformation_matrixes=False,
         )
         hand_opts = mp.tasks.vision.HandLandmarkerOptions(
             base_options=BaseOpts(model_asset_path=self.cfg.hand_model_path),
@@ -325,7 +267,6 @@ class LandmarkExtractor:
         try:
             with (
                 mp.tasks.vision.PoseLandmarker.create_from_options(pose_opts) as pose_lm,
-                mp.tasks.vision.FaceLandmarker.create_from_options(face_opts) as face_lm,
                 mp.tasks.vision.HandLandmarker.create_from_options(hand_opts) as hand_lm,
             ):
                 while True:
@@ -338,7 +279,6 @@ class LandmarkExtractor:
                     ts_ms  = int(frame_idx * 1000.0 / fps)
 
                     pose_res = pose_lm.detect_for_video(mp_img, ts_ms)
-                    face_res = face_lm.detect_for_video(mp_img, ts_ms)
                     hand_res = hand_lm.detect_for_video(mp_img, ts_ms)
 
                     # ---- Pose → subset upper-body ----
@@ -350,14 +290,6 @@ class LandmarkExtractor:
                     else:
                         pose_arr = np.full((n_pose_out, 4), np.nan, dtype=np.float32)
                     pose_seq.append(pose_arr)
-
-                    # ---- Face → subset key points ----
-                    if face_res.face_landmarks:
-                        full     = _landmarks_to_array(face_res.face_landmarks[0])
-                        face_arr = _subset(full, FACE_KEY_IDX)     # [46, 3]
-                    else:
-                        face_arr = np.full((n_face_out, 3), np.nan, dtype=np.float32)
-                    face_seq.append(face_arr)
 
                     # ---- Hands → semua 21 titik ----
                     frame_hands = np.full((2, N_HAND, 3), np.nan, dtype=np.float32)
@@ -375,12 +307,6 @@ class LandmarkExtractor:
                                 bgr, pose_res.pose_landmarks[0],
                                 POSE_UPPER_IDX,
                                 self.cfg.pose_color, self.cfg.pose_radius,
-                            )
-                        if self.cfg.draw_face and face_res.face_landmarks:
-                            _draw_face_subset(
-                                bgr, face_res.face_landmarks[0],
-                                FACE_KEY_IDX,
-                                self.cfg.face_color, self.cfg.face_radius,
                             )
                         if self.cfg.draw_hands and hand_res.hand_landmarks:
                             for lm_list in hand_res.hand_landmarks:
@@ -407,7 +333,6 @@ class LandmarkExtractor:
             total_frames=frame_idx,
             fps=fps,
             pose=np.stack(pose_seq)  if pose_seq  else np.empty((0, n_pose_out, 4)),
-            face=np.stack(face_seq)  if face_seq  else np.empty((0, n_face_out, 3)),
             hands=np.stack(hand_seq) if hand_seq  else np.empty((0, 2, N_HAND, 3)),
         )
 
@@ -415,9 +340,9 @@ class LandmarkExtractor:
             self.save_npy(result, out_npy_path)
 
         logger.info(
-            "Done: %s | frames=%d | pose=%s face=%s hands=%s",
+            "Done: %s | frames=%d | pose=%s hands=%s",
             video_path.name, frame_idx,
-            result.pose.shape, result.face.shape, result.hands.shape,
+            result.pose.shape, result.hands.shape,
         )
         return result
 
@@ -478,14 +403,14 @@ class LandmarkExtractor:
         """Simpan ExtractionResult ke .npz terkompresi."""
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        np.savez_compressed(str(path), pose=result.pose, face=result.face, hands=result.hands)
+        np.savez_compressed(str(path), pose=result.pose, hands=result.hands)
         logger.info("Saved: %s", path)
 
     @staticmethod
     def load_npy(path: str | Path) -> dict[str, np.ndarray]:
-        """Load .npz → dict dengan key 'pose', 'face', 'hands'."""
+        """Load .npz → dict dengan key 'pose', 'hands'."""
         data = np.load(str(path))
-        return {k: data[k] for k in ("pose", "face", "hands")}
+        return {k: data[k] for k in ("pose", "hands")}
 
     # ------------------------------------------------------------------
     # Internal
@@ -494,7 +419,7 @@ class LandmarkExtractor:
     def _validate_models(self) -> None:
         missing = [
             str(Path(getattr(self.cfg, attr)))
-            for attr in ("pose_model_path", "face_model_path", "hand_model_path")
+            for attr in ("pose_model_path", "hand_model_path")
             if not Path(getattr(self.cfg, attr)).exists()
         ]
         if missing:
