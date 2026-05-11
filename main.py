@@ -14,8 +14,7 @@ Batch folder:
 
 Custom model paths:
     python main.py single input.mp4 \\
-        --pose-model path/pose.task \\ --face-model path/face.task \\
-        --hand-model path/hand.task
+        --pose-model path/pose.task \\ --hand-model path/hand.task
 """
 
 from __future__ import annotations
@@ -43,28 +42,22 @@ logger = logging.getLogger(__name__)
 def _add_model_args(parser: argparse.ArgumentParser) -> None:
     g = parser.add_argument_group("Model paths")
     g.add_argument("--pose-model", default="tasks/pose_landmarker_heavy.task")
-    g.add_argument("--face-model", default="tasks/face_landmarker.task")
     g.add_argument("--hand-model", default="tasks/hand_landmarker.task")
 
 
 def _add_confidence_args(parser: argparse.ArgumentParser) -> None:
     g = parser.add_argument_group("Confidence thresholds")
     g.add_argument("--pose-conf", type=float, default=0.5)
-    g.add_argument("--face-conf", type=float, default=0.3)
     g.add_argument("--hand-conf", type=float, default=0.5)
 
 
 def _build_config(args: argparse.Namespace) -> ExtractorConfig:
     return ExtractorConfig(
         pose_model_path=args.pose_model,
-        face_model_path=args.face_model,
         hand_model_path=args.hand_model,
         pose_detection_conf=args.pose_conf,
         pose_presence_conf=args.pose_conf,
         pose_tracking_conf=args.pose_conf,
-        face_detection_conf=args.face_conf,
-        face_presence_conf=args.face_conf,
-        face_tracking_conf=args.face_conf,
         hand_detection_conf=args.hand_conf,
         hand_presence_conf=args.hand_conf,
         hand_tracking_conf=args.hand_conf,
@@ -88,7 +81,7 @@ def cmd_single(args: argparse.Namespace) -> None:
         f"\n  frames: {result.total_frames}"
         f"\n  fps   : {result.fps:.2f}"
         f"\n  pose  : {result.pose.shape}"
-        f"\n  face  : {result.face.shape}"
+        f"\n  hands : {result.hands.shape}"
         f"\n  hands : {result.hands.shape}"
     )
 
@@ -110,7 +103,7 @@ def cmd_batch(args: argparse.Namespace) -> None:
     for name, r in results.items():
         print(
             f"  {name:40s} | frames={r.total_frames:5d} | "
-            f"pose={r.pose.shape} face={r.face.shape} hands={r.hands.shape}"
+            f"pose={r.pose.shape} hands={r.hands.shape}"
         )
 
 
