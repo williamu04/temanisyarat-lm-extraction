@@ -45,17 +45,34 @@ POSE_UPPER_IDX = [0, 11, 12, 13, 14, 15, 16, 23, 24]
 
 # Hand skeleton connections (semua 21 landmark dipakai, koneksi digambar)
 HAND_CONNECTIONS = [
-    (0, 1),  (1, 2),  (2, 3),   (3, 4),    # ibu jari
-    (0, 5),  (5, 6),  (6, 7),   (7, 8),    # telunjuk
-    (0, 9),  (9, 10), (10, 11), (11, 12),  # jari tengah
-    (0, 13), (13, 14),(14, 15), (15, 16),  # jari manis
-    (0, 17), (17, 18),(18, 19), (19, 20),  # kelingking
-    (5, 9),  (9, 13), (13, 17),            # telapak
+    (0, 1),
+    (1, 2),
+    (2, 3),
+    (3, 4),  # ibu jari
+    (0, 5),
+    (5, 6),
+    (6, 7),
+    (7, 8),  # telunjuk
+    (0, 9),
+    (9, 10),
+    (10, 11),
+    (11, 12),  # jari tengah
+    (0, 13),
+    (13, 14),
+    (14, 15),
+    (15, 16),  # jari manis
+    (0, 17),
+    (17, 18),
+    (18, 19),
+    (19, 20),  # kelingking
+    (5, 9),
+    (9, 13),
+    (13, 17),  # telapak
 ]
 
 # Full landmark counts (MediaPipe spec)
 N_POSE_FULL = 33
-N_HAND      = 21
+N_HAND = 21
 
 
 # ---------------------------------------------------------------------------
@@ -69,22 +86,22 @@ class ExtractorConfig:
     # Pose
     num_poses: int = 1
     pose_detection_conf: float = 0.5
-    pose_presence_conf: float  = 0.5
-    pose_tracking_conf: float  = 0.5
+    pose_presence_conf: float = 0.5
+    pose_tracking_conf: float = 0.5
 
     # Hand
     num_hands: int = 2
     hand_detection_conf: float = 0.5
-    hand_presence_conf: float  = 0.5
-    hand_tracking_conf: float  = 0.5
+    hand_presence_conf: float = 0.5
+    hand_tracking_conf: float = 0.5
 
     # Drawing toggles
-    draw_pose:  bool = True
+    draw_pose: bool = True
     draw_hands: bool = True
 
     # Drawing style
-    pose_color: tuple[int, int, int] = (0, 255, 0)   # BGR green
-    hand_color: tuple[int, int, int] = (0, 0, 255)   # BGR red
+    pose_color: tuple[int, int, int] = (0, 255, 0)  # BGR green
+    hand_color: tuple[int, int, int] = (0, 0, 255)  # BGR red
     pose_radius: int = 4
     hand_radius: int = 3
     hand_line_thickness: int = 1
@@ -101,10 +118,11 @@ class ExtractionResult:
     pose  : [T, len(POSE_UPPER_IDX), 4]   (x, y, z, visibility)
     hands : [T, 2, N_HAND,           3]   (hand_idx, landmark, xyz)
     """
-    video_path:   str
+
+    video_path: str
     total_frames: int
-    fps:          float
-    pose:  np.ndarray = field(default_factory=lambda: np.array([]))
+    fps: float
+    pose: np.ndarray = field(default_factory=lambda: np.array([]))
     hands: np.ndarray = field(default_factory=lambda: np.array([]))
 
 
@@ -112,13 +130,14 @@ class ExtractionResult:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _landmarks_to_array(
     list_lm: list,
     extra_fields: Optional[list[str]] = None,
 ) -> np.ndarray:
     """Convert MediaPipe landmark list → float32 array [N, 3+extras]."""
     cols = ["x", "y", "z"] + (extra_fields or [])
-    arr  = np.full((len(list_lm), len(cols)), np.nan, dtype=np.float32)
+    arr = np.full((len(list_lm), len(cols)), np.nan, dtype=np.float32)
     for i, lm in enumerate(list_lm):
         for j, name in enumerate(cols):
             arr[i, j] = getattr(lm, name, np.nan)
@@ -137,6 +156,7 @@ def _subset(arr: np.ndarray, indices: list[int]) -> np.ndarray:
 # ---------------------------------------------------------------------------
 # Drawing helpers
 # ---------------------------------------------------------------------------
+
 
 def _px(lm, w: int, h: int) -> tuple[int, int]:
     return int(lm.x * w), int(lm.y * h)
@@ -192,6 +212,7 @@ def _draw_hand_skeleton(
 # Main extractor class
 # ---------------------------------------------------------------------------
 
+
 class LandmarkExtractor:
     """
     MediaPipe Tasks extractor (Pose + Hand) — VIDEO mode.
@@ -230,8 +251,8 @@ class LandmarkExtractor:
         if not cap.isOpened():
             raise RuntimeError(f"Cannot open video: {video_path}")
 
-        fps    = cap.get(cv2.CAP_PROP_FPS) or 25.0
-        width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
         writer: Optional[cv2.VideoWriter] = None
@@ -244,7 +265,7 @@ class LandmarkExtractor:
         n_pose_out = len(POSE_UPPER_IDX)
 
         BaseOpts = mp.tasks.BaseOptions
-        RunMode  = mp.tasks.vision.RunningMode
+        RunMode = mp.tasks.vision.RunningMode
 
         pose_opts = mp.tasks.vision.PoseLandmarkerOptions(
             base_options=BaseOpts(model_asset_path=self.cfg.pose_model_path),
@@ -266,27 +287,31 @@ class LandmarkExtractor:
         frame_idx = 0
         try:
             with (
-                mp.tasks.vision.PoseLandmarker.create_from_options(pose_opts) as pose_lm,
-                mp.tasks.vision.HandLandmarker.create_from_options(hand_opts) as hand_lm,
+                mp.tasks.vision.PoseLandmarker.create_from_options(
+                    pose_opts
+                ) as pose_lm,
+                mp.tasks.vision.HandLandmarker.create_from_options(
+                    hand_opts
+                ) as hand_lm,
             ):
                 while True:
                     ok, bgr = cap.read()
                     if not ok:
                         break
 
-                    rgb    = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+                    rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
                     mp_img = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
-                    ts_ms  = int(frame_idx * 1000.0 / fps)
+                    ts_ms = int(frame_idx * 1000.0 / fps)
 
                     pose_res = pose_lm.detect_for_video(mp_img, ts_ms)
                     hand_res = hand_lm.detect_for_video(mp_img, ts_ms)
 
                     # ---- Pose → subset upper-body ----
                     if pose_res.pose_landmarks:
-                        full     = _landmarks_to_array(
+                        full = _landmarks_to_array(
                             pose_res.pose_landmarks[0], extra_fields=["visibility"]
                         )
-                        pose_arr = _subset(full, POSE_UPPER_IDX)   # [9, 4]
+                        pose_arr = _subset(full, POSE_UPPER_IDX)  # [9, 4]
                     else:
                         pose_arr = np.full((n_pose_out, 4), np.nan, dtype=np.float32)
                     pose_seq.append(pose_arr)
@@ -296,7 +321,7 @@ class LandmarkExtractor:
                     if hand_res.hand_landmarks:
                         for hi, lm_list in enumerate(hand_res.hand_landmarks[:2]):
                             ha = _landmarks_to_array(lm_list)
-                            n  = min(len(ha), N_HAND)
+                            n = min(len(ha), N_HAND)
                             frame_hands[hi, :n] = ha[:n]
                     hand_seq.append(frame_hands)
 
@@ -304,14 +329,17 @@ class LandmarkExtractor:
                     if writer is not None:
                         if self.cfg.draw_pose and pose_res.pose_landmarks:
                             _draw_pose_subset(
-                                bgr, pose_res.pose_landmarks[0],
+                                bgr,
+                                pose_res.pose_landmarks[0],
                                 POSE_UPPER_IDX,
-                                self.cfg.pose_color, self.cfg.pose_radius,
+                                self.cfg.pose_color,
+                                self.cfg.pose_radius,
                             )
                         if self.cfg.draw_hands and hand_res.hand_landmarks:
                             for lm_list in hand_res.hand_landmarks:
                                 _draw_hand_skeleton(
-                                    bgr, lm_list,
+                                    bgr,
+                                    lm_list,
                                     HAND_CONNECTIONS,
                                     self.cfg.hand_color,
                                     self.cfg.hand_radius,
@@ -332,8 +360,8 @@ class LandmarkExtractor:
             video_path=str(video_path),
             total_frames=frame_idx,
             fps=fps,
-            pose=np.stack(pose_seq)  if pose_seq  else np.empty((0, n_pose_out, 4)),
-            hands=np.stack(hand_seq) if hand_seq  else np.empty((0, 2, N_HAND, 3)),
+            pose=np.stack(pose_seq) if pose_seq else np.empty((0, n_pose_out, 4)),
+            hands=np.stack(hand_seq) if hand_seq else np.empty((0, 2, N_HAND, 3)),
         )
 
         if out_npy_path is not None:
@@ -341,8 +369,10 @@ class LandmarkExtractor:
 
         logger.info(
             "Done: %s | frames=%d | pose=%s hands=%s",
-            video_path.name, frame_idx,
-            result.pose.shape, result.hands.shape,
+            video_path.name,
+            frame_idx,
+            result.pose.shape,
+            result.hands.shape,
         )
         return result
 
@@ -365,9 +395,8 @@ class LandmarkExtractor:
             raise NotADirectoryError(f"Not a directory: {folder_path}")
 
         pattern = "**/*" if recursive else "*"
-        videos  = sorted(
-            p for p in folder_path.glob(pattern)
-            if p.suffix.lower() in VIDEO_EXTENSIONS
+        videos = sorted(
+            p for p in folder_path.glob(pattern) if p.suffix.lower() in VIDEO_EXTENSIONS
         )
 
         if not videos:
@@ -384,8 +413,12 @@ class LandmarkExtractor:
         results: dict[str, ExtractionResult] = {}
         for idx, vid in enumerate(videos, 1):
             logger.info("[%d/%d] %s", idx, len(videos), vid.name)
-            ovp = Path(out_video_dir) / (vid.stem + "_landmarks" + vid.suffix) if out_video_dir else None
-            onp = Path(out_npy_dir)   / (vid.stem + ".npz")                    if out_npy_dir  else None
+            ovp = (
+                Path(out_video_dir) / (vid.stem + "_landmarks" + vid.suffix)
+                if out_video_dir
+                else None
+            )
+            onp = Path(out_npy_dir) / (vid.stem + ".npz") if out_npy_dir else None
             try:
                 results[vid.name] = self.process_video(vid, ovp, onp)
             except Exception as exc:  # noqa: BLE001
@@ -423,4 +456,6 @@ class LandmarkExtractor:
             if not Path(getattr(self.cfg, attr)).exists()
         ]
         if missing:
-            raise FileNotFoundError("Model file(s) not found:\n  " + "\n  ".join(missing))
+            raise FileNotFoundError(
+                "Model file(s) not found:\n  " + "\n  ".join(missing)
+            )
